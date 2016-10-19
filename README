@@ -1,0 +1,99 @@
+=======
+Step 1. Create a configuration file in ./code/genbank.conf
+=======
+
+host=localhost
+user=[your_mysql_account]
+password=[your_mysql_passwd]
+database=genbank
+
+annotation_gz_dir=/home/data/genbank/ann_gz
+tmp_dir=/home/data/genbank/tmp
+csv_dir=[your_folder_of_the_output_csv] // default: /home/data/genbank/csv
+
+
+=======
+Step 2. Run: "parse.php"  -- patent files (gbpat*) are not included for the current phase
+=======
+
+NOTE: It is recommended that you make a copy of the file "parse.php" to something like "my_parse.php", and then "php my_parse.php"
+This way you can edit the file "my_parse.php" as you like, and you don't have to fight against "git pull".
+
+The genbank annotation data (from "annotation_gz_dir/*.ann.gz") will be parsed and output to csv files in "csv_dir/*.csv"
+
+ANNOTATION.csv
+ANNOTATION_REFERENCE.csv
+REFERENCE.csv
+KEYWORDS.csv
+SOURCE.csv
+ORGANISM.csv
+DBLINK.csv
+COMMENT.csv
+
+For data schema, see file: "database_admin.php" (task: task_create_all_tables)
+
+
+Here are the files generated after running the script "php my_parse.php" for about 15 hours:
+
+$ ls -l /home/data/genbank/csv
+
+34918268833 Oct  1 02:33 ANNOTATION.csv
+ 6438493550 Oct  1 02:33 ANNOTATION_REFERENCE.csv
+  336099810 Oct  1 02:33 REFERENCE.csv
+19733966414 Oct  1 02:33 COMMENT.csv
+     403179 Oct  1 02:31 DBLINK.csv
+    6148272 Oct  1 02:33 KEYWORDS.csv
+  224800565 Oct  1 02:33 ORGANISM.csv
+   64862123 Oct  1 02:33 SOURCE.csv
+
+
+======
+Step 3. Run "database_admin.php"
+======
+
+  Task 1: task_create_all_tables  (warning: do this carefully)
+
+  Task 2: task_load_csv_files_to_database
+
+NOTE: It is recommended that you make a copy of the file "database_admin.php" to something like "my_database_admin.php", and then "php my_database_admin.php"
+
+Running "php database_admin.php" (task 2 will take about 3 to 5 hours) 
+
+
+======
+Step 4. Using MySQL Workbench
+======
+
+queries:
+
+SELECT count(*) FROM Annotation;
+149,876,759 rows
+    takes about 27 minutes
+
+SELECT count(*) FROM Annotation_Reference;
+202,790,663 rows
+    On average, each annotation has 200/150 = 1.35 references.
+
+SELECT count(*) FROM Reference;
+1,351,049 rows
+    These are unique references
+
+SELECT count(*) FROM Reference WHERE pubmed IS NOT NULL;
+262,672
+
+SELECT count(*) FROM Reference WHERE title like "Direct Submission%";
+689,764   
+
+SELECT count(*) FROM Reference WHERE journal like "unpublished%";
+341,959 
+
+
+
+=====
+Future work
+=====
+
+further parse the "locus" field
+
+parse the "authors" field
+
