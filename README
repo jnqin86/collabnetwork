@@ -1,3 +1,165 @@
+Skip to content
+This repository
+Search
+Pull requests
+Issues
+Gist
+ @jnqin86
+ Unwatch 5
+  Star 1
+  Fork 0 junwang4/genbank
+ Code  Issues 0  Pull requests 0  Projects 0  Wiki  Pulse  Graphs
+Branch: master  Create new file Upload files Find file History genbank/jwang/
+Latest commit 3f1dc3d  on Sep 18, 2014 @junwang4 junwang4 updated README under jwang
+..		
+code	changed type of year in Reference table from VARCHAR to INT	2 years ago
+README	updated README under jwang	2 years ago
+
+README
+This file is used to document what Jun has done.
+
+== 2014-09-18 ==
+
+I added a new column "year" for table "genbank.Reference"
+
+Now you can run something like: 
+
+mysql> SELECT * FROM genbank.Reference WHERE year<1980;
+mysql> SELECT year, count(*) FROM genbank.Reference GROUP BY year;
+
+The "year" information is extracted from column "journal".
+
+There are three types of journal data (note that Patent-like references are not processed):
+
+(1) Published.
+journal example: "Cell 15 (2), 541-550 (1978)"
+extracted year:  1978
+
+(2) Unpublished.
+journal example: "Unpublished"
+extracted year:  null
+
+(3) Direct Submission.
+journal example: "Submitted (12-OCT-2001) Biology, RPI, 110 8th St, Troy, NY 12180,	USA"
+extracted year:  2001
+
+
+
+== 2014-07-28 ==
+
+A note about the Reference table, especially its id
+
+First, take a look at this example,
+
+mysql> SELECT * FROM Reference LIMIT 2;
+
+| id   | reference           | authors    ...
+
+| 4001 | 1  (bases 1 to 556) | Wu,Z.A., Liu,W.X., Murphy,C. and Gall,J. ...
+
+| 4002 | 2  (bases 1 to 556) | Gall,J.                                  ...
+
+The ids for the first two references in the table are: 4001 and 4002
+
+From the two numbers, we can quickly connect them with the annotation whose gi (genbank index) is 4. This is because the reference id is designed as the combination of two numbers:
+
+(1) the gi of the first annotation that the reference occurs. (A reference may occur in many annotations, so we only need to use the first annotation.)
+
+(2) the ordered position of the reference in the annotation. (An annotation may have two or more references).  The order starts from 001, and could be as large as 999.
+
+To confirm this, run the following query:
+
+mysql> SELECT * FROM AnnotationReference WHERE gi=4;
++-----------+------+-------------+
+| keyId     | gi   | referenceId |
++-----------+------+-------------+
+| 164599015 |    4 |        4001 |
+| 164599016 |    4 |        4002 |
+
+or 
+
+mysql> SELECT * FROM AnnotationReference WHERE referenceId>=4001 and referenceId<=4002;
++-----------+------+-------------+
+| keyId     | gi   | referenceId |
++-----------+------+-------------+
+| 164599015 |    4 |        4001 |
+| 164599016 |    4 |        4002 |
++-----------+------+-------------+
+
+As a second example, if an annotation has a gi of 9923, and it has three references (and we suppose that it is the first annotation that these references occur). Then the ids of the three references are: 9923001, 9923002, 9923003.
+
+I should emphasize that the Reference id such as 9923001 was designed this way so that we, as humans, when reading 9923001, can quickly make connections between annotation 9923 (and/or some following annotations such as 9924, 9925...) and reference 9923001. To find out which annotations the reference 9923001 is associated with, we need to query the table "AnnotationReference".
+
+
+
+== 2014-06-02 ==
+
+Just found that some organisms share the same name (853 such cases, out of over 1 million). For example, bacteria has two entries in table taxNode; one has the rank of superkingdom, and the other one the rank of genus. There are 853 such cases of name sharing.
+
+I need to fix it - it involves four tables (Annotation, taxNode, Organism_new, Organism_tax) and will take a while.
+
+
+== 2014-05-30 ==
+
+1. Added a column "tax_id" in table Annotation
+2. Added a new table: Organism_new (which contains taxonomy details for a tax_id in Annotation)
+
+fields in Organism_new: 
+
+ tax_id
+ tax_name
+ rank
+ top1_tax_id
+ top1_tax_name
+ top1_tax_rank
+ top2_tax_id
+ top2_tax_name
+ top2_tax_rank
+ top3_tax_id
+ top3_tax_name
+ top3_tax_rank
+ bottom1_tax_id
+ bottom1_tax_name
+ bottom1_tax_rank
+ bottom2_tax_id
+ bottom2_tax_name
+ bottom2_tax_rank
+ bottom3_tax_id
+ bottom3_tax_name
+ bottom3_tax_rank
+ content 
+
+top1_tax is the taxonomy information for the "highest ancester" of the species given in the ORGANISM field of an annotation record. 
+
+For example, here is the ORGANISM field of an annotation
+
+ Danio rerio
+ Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi; Actinopterygii; Neopterygii; Teleostei; Ostariophysi; Cypriniformes; Cyprinidae; Danio. 
+
+"Danio rerio" is the species name,
+    top1_tax_name : "Eukaryota"
+    top2_tax_name : "Metazoa"
+    top3_tax_name : "Chordata"
+    bottom1_tax_name : "Danio"
+    bottom2_tax_name : "Cyprinidae"
+    bottom3_tax_name : "Cypriniformes"
+
+3. We no long need to use the column "organismId" in table Annotation. Instead, we will use "tax_id".
+
+For example, to get some taxonomy information for the annotation with GI=2, we can do this:
+
+SELECT a.gi, a.definition, o.tax_name, o.tax_rank, o.top1_tax_name, o.top1_tax_rank, o.bottom1_tax_name, o.bottom1_tax_rank FROM Annotation as a, Organism_new as o WHERE a.tax_id = o.tax_id AND a.gi=2;
+
+| gi | definition                                                 | tax_name   | tax_rank | top1_tax_name | top1_tax_rank | bottom1_tax_name | bottom1_tax_rank |
+
+|  2 | B.taurus DNA sequence 1 from patent application EP0238993. | Bos taurus | species  | Eukaryota     | superkingdom  | Bos              | genus            |
+
+Contact GitHub API Training Shop Blog About
+© 2016 GitHub, Inc. Terms Privacy Security Status Help
+
+
+
+
 =======
 Step 1. Create a configuration file in ./code/genbank.conf
 =======
