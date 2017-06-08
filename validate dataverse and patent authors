@@ -1,0 +1,83 @@
+#Code for matching ReferencePatent and Dataverse Authors - Validating
+#By: Shrutik
+
+
+a = read.csv("US_unique_authors.csv")
+b = read.csv("dataverse_unique_authors.csv") # can be found in dropbox/mysql (test database)
+#cleaning
+a = a[,-5:-12]
+colnames(a) = c("patent_no","Lname","Fname","seq")
+b = b[,2:5]
+b_temp = b
+
+library(dplyr)
+refPatAuthors = a
+dataverseAuthors = b_temp
+# Chang everything
+dataverseAuthors <- mutate_each(dataverseAuthors, funs(tolower))
+refPatAuthors <- mutate_each(refPatAuthors, funs(tolower))
+
+b1 = b[b$unique_id<6838079,]
+b2 = b[b$unique_id>=6838079,]
+b2$seq = as.numeric(b2$seq) + 1
+b_temp = rbind(b1,b2)
+
+# Just to get all patents with one author
+b1 = data.frame(table(b_temp$unique_id))
+b1 = b1[b1$Freq==1,]
+
+b2 = b_temp[b$unique_id %in% b1$Var1,]
+b2 = b2[b2$seq==0,]
+
+b_temp$seq[b_temp$unique_id %in% b2$unique_id] <- 0 # THis works!
+
+b_temp$seq = as.numeric(b_temp$seq) + 1
+
+#b2$seq = max(b2$seq)
+
+#refPatAuthors$newid = as.numeric(refPatAuthors$patent_no)+as.numeric(refPatAuthors$seq)
+#dataverseAuthors$newid = as.numeric(dataverseAuthors$unique_id)+as.numeric(dataverseAuthors$seq)
+
+refPatAuthors$newid = paste(refPatAuthors$patent_no,refPatAuthors$seq)
+length(unique(refPatAuthors$newid))
+dataverseAuthors$newid = paste(dataverseAuthors$unique_id,dataverseAuthors$seq)
+length(unique(dataverseAuthors$newid))
+
+dataverseAuthors$names <- gsub('\\s+', '', dataverseAuthors$newid)
+dataverseAuthors$names = as.numeric(dataverseAuthors$names)
+
+refPatAuthors$names <- gsub('\\s+', '', refPatAuthors$newid)
+refPatAuthors$names = as.numeric(refPatAuthors$names)
+
+df = merge(x = refPatAuthors, y = dataverseAuthors, by = "names", all = TRUE)
+
+#library(data.table)
+#dt1 <- data.table(refPatAuthors, key = "names")
+#dt2 <- data.table(dataverseAuthors, key = "names")
+#joined.dt1.dt.2 <- dt1[dt2]
+#joined.dt1.dt.2 = na.omit(joined.dt1.dt.2)
+
+joined.dt1.dt.2=df
+for(i in 1:length(joined.dt1.dt.2$names))
+{print(i)
+  joined.dt1.dt.2$cosine[i] = stringdist(joined.dt1.dt.2$Lname.x[i],joined.dt1.dt.2$Lname.y[i],method = c('cosine'))
+}
+
+length(unique(refPatAuthors$patent_no)) #58555 # No. of Unique US Patents in RefPat
+length(unique(dataverseAuthors$unique_id)) #45884 # No. of Unique US Patents in Dataverse
+
+length(refPatAuthors$Lname) #206080 # No. of Authors in RefPat
+length(dataverseAuthors$Lname) #157077 # No. of Authors in Dataverse
+
+#temp = (refPatAuthors[dataverseAuthors$unique_id %in% refPatAuthors$patent_no,])
+
+colSums(!is.na(joined.dt1.dt.2)) # Vectorization ftw
+# We got 157025 cosine values, meaning almost all the authors from dataverse matched something.
+
+small_result = na.omit(joined.dt1.dt.2)
+
+length(small_result$names[small_result$cosine<0.4107443]) #154744 good matches
+# Which leaves behind 2333
+# Match ratio? 98.51474%
+
+#result = joined.dt1.dt.2
