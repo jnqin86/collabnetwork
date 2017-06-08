@@ -1,5 +1,5 @@
 #Code to separate unique authors
-#By Shrutik and Suchitra
+#By Shrutik (and Suchitra?)
 
 data = read.csv("US_unique.csv")
 
