@@ -1,0 +1,112 @@
+#This code first cleans the unique_author_list from DropBox, which is all and ONLY US patent authors.
+#Then we merge and calculate descriptive counts along the way as we merge with the tables containing
+#Reference authors from genbank.Reference_Authors, genbank.disambig_Reference_Authors, and genbank.Reference. Finally, we write a csv with 
+#the output of Authors who have Direct Submissions, Publications, and Patents for initial analysis. 
+#These calculations are part of validation and disambiguation. 
+
+install.packages("RMySQL")
+library(dbConnect)
+library(stringi)
+
+con<-dbConnect(MySQL(),user="GenBankUser", password="123GenBank456",host="metadatalab.syr.edu", dbname="genbank")
+#Dataframe 1 for disambig: disambig_Reference authors.
+unique_ref_auths= dbGetQuery(con,"select * from genbank.disambig_Authors;")
+
+patent_no_lengths<-stri_length(patent_auths$patent_no)
+summary(patent_no_lengths)
+#The length of US patent numbers is 6 or 7 digits for utility patents. 
+
+#Datafrane 2 for disambig: Read in csv from Dropbox: unique_author_list, which IS all and only US authors. 
+US_unique_authors<-read.csv()
+
+#clean and inspect US authors
+US_uni<-US_unique_authors #unique author list from drop box appears to check out. There are 206k authors. 
+US_uni<-US_uni[order(US_uni$author_name),]
+
+US_uni<-US_uni[-c(47061,47062), ] #delete the 47,061 and 47,062 rows
+US_uni[47060:47062, ] #baller.
+tail(US_uni)
+nrow(US_uni)
+
+US_noCOM<-US_uni[47061: 206078, ]
+nrow(US_noCOM) #159018 total
+US_w.COM<-US_uni[1:47060, ]
+nrow(US_w.COM) #47060. cool. correct number.
+
+
+US_w.COM$author_name<-gsub("^[,]", "", US_w.COM$author_name)#clean comma by gsubbing just the first comma
+View(US_w.COM)
+
+US_authors.c<-rbind(US_w.COM, US_noCOM)
+nrow(US_authors.c) #206078 - great. This is correct (because we deleted the two anomalies. )
+
+
+#Let's check the brute string overlap.
+
+unique_ref_auths[1:5,]
+US_authors.c[1:5, ]
+edit(US_authors.c)
+
+#But there are "ands"
+#filter for those containing "and"
+US_auths_Subset <- US_authors.c[grep("and", US_authors.c$author_name), ]
+nrow(US_auths_Subset)
+View(US_auths_Subset)
+US_auths_Subset<-US_auths_Subset[order(US_auths_Subset$author_name),]
+and_subset<-US_auths_Subset[104:3989,]
+and_subset$author_name<-gsub("^and", "", and_subset$author_name)
+View(and_subset)
+
+US_authors.c<-US_authors.c<-US_authors.c[order(US_authors.c$author_name),]
+
+
+US_authors.cl<-(US_authors.c[-(3514:7399),])
+nrow(and_subset)+ nrow(US_authors.cl)
+#added 206078 good good.
+US_authors.cleaned<-rbind(US_authors.cl,and_subset)
+nrow(US_authors.cleaned) #sweet.
+
+#are there any /tabs?
+US_authors.cleaned$author_name<-gsub("\t", "", US_authors.cleaned$author_name)#clean comma by gsubbing just the first comma
+m<-US_authors.cleaned[grep("\t", US_authors.cleaned$author_name), ]
+
+
+#INNER join disambig auths and US_auths cleaned by string match. we'll be precise first, then we'll grep. then fuzzy.
+bind_em<-merge(unique_ref_auths, US_authors.cleaned, by="author_name")
+View(bind_em) 
+nrow(bind_em)/nrow(US_authors.cleaned)*100 #16.5% overlap. 34,110 authors 
+bind_em
+
+unique_auths<-unique(bind_em$author_name)
+unique_auths<-as.data.frame(unique_auths)  #14922
+
+
+nrow(unique_auths)
+View(unique_auths)
+Reference_Authors= dbGetQuery(con,"select * from genbank.disambig_Reference_Authors;")
+colnames(bind_em)[2]<-"author_id"
+bind_refid<-merge(bind_em, Reference_Authors, by="author_id")
+View(bind_refid)
+nrow(bind_refid) #1,387,056 (because it was an outer join)
+
+bit_bind<-bind_refid
+Reference=dbGetQuery(con,"select * from genbank.Reference;")
+Ref_bind_refid<-merge(bit_bind, Reference, by="id")
+View(Ref_bind_refid)
+
+write.csv(Ref_bind_refid, "Ref_bind_refid.csv")
+
+#OUTER (ALL)
+outer_bind_em<-merge(unique_ref_auths, US_authors.cleaned, by="author_name", all=TRUE)
+View(unique_ref_auths)
+nrow(outer_bind_em) #736,513 
+
+#LEFT: how many auths in Patents that are in / not in Refs
+left_bind_em<-merge(US_authors.cleaned, unique_ref_auths, by="author_name", all.x=TRUE)
+View(left_bind_em)
+
+#RIGHT: how many auths in Refs that are not / are in Patents?
+right_bind_em<-merge(US_authors.cleaned, unique_ref_auths, by="author_name", all.y=TRUE)
+
+
+#P.S. identified anomalies in the table test.ReferencePatent_Authors - will drop this table after consulting with GenBank team.
