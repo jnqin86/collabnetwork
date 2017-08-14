@@ -65,3 +65,42 @@ for (my.row in 2:dim(N)[1]) {
   df.N <- rbind(df.N, tmp.df)
 }
 # end
+#I stopped it (esc) after 44 hours. There are 50052 rows.
+#((385893/50052)*44hours)/24 hours ==14.13 days to run whole thing (from start)
+
+df2<-df.N[1:10000,]
+dim(df2)
+
+library(igraph)
+g <- graph.data.frame(df2, directed=FALSE)  
+
+#E(g)$weight <- 1
+#g <- simplify(g, edge.attr.comb="sum")
+
+
+V(g)$size <- 1
+#E(g)$width <- E(g)$weight
+V(g)$label <- ""
+plot.igraph(g, edge.arrow.size=0, edge.arrow.width=0, main="")
+
+
+table(E(g)$ref.type)
+E(g)$color <- "red"
+E(g)$color[E(g)$ref.type == "publication"] <- "blue"
+E(g)$color[E(g)$ref.type == "submission"] <- "green"
+
+
+# this next like will take a longer and longer time on biger and bigger networks.
+# don't run if you don't have time.
+#l <- layout.fruchterman.reingold(g) 
+#l <- layout.kamada.kawai(g)
+
+V(g)$x <- l[,1]
+V(g)$y <- l[,2]
+
+
+plot.igraph(g, edge.arrow.size=0, edge.arrow.width=0, main="")
+
+V(g)$color <- "brown"
+V(g)$name
+match()
