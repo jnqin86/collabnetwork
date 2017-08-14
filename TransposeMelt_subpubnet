@@ -1,6 +1,5 @@
-saveRDS(tmp.spf.final, "tmp.spf.final.rds") #fully parsed authors for sub pub network analysis and vis.
-#memory.size()
-#Load tmp.spf.final. Make sure its te right file.
+
+#Load tmp.spf.final. This file is located in this github repository: https://github.com/jnqin86/collabnetwork/blob/genbank_2016_sarah/tmp.spf.final.rds
 tmp.spf.final<- readRDS("C:/Users/Sarah/Documents/tmp.spf.final.rds")
 
 colnames(tmp.spf.final)[4] #The second author. If it is a solo-author, it freaks out the code.
