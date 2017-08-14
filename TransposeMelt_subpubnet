@@ -1,0 +1,67 @@
+saveRDS(tmp.spf.final, "tmp.spf.final.rds") #fully parsed authors for sub pub network analysis and vis.
+#memory.size()
+#Load tmp.spf.final. Make sure its te right file.
+tmp.spf.final<- readRDS("C:/Users/Sarah/Documents/tmp.spf.final.rds")
+
+colnames(tmp.spf.final)[4] #The second author. If it is a solo-author, it freaks out the code.
+dim(tmp.spf.final)
+N<-tmp.spf.final
+
+N$iz.na<-is.na(N[,4]) #When I ran it the first time the issue was with solo author. N comes from the df of US pub sub authors. it is called tmp.spf.final. which stands for temp sub pub final.final
+#table(N$iz.na)
+N<-N[N$iz.na=="FALSE",]
+dim(N)
+View(head(N))
+
+
+
+# run from here to where it says end below
+tmp <- t(combn(A[1,!is.na(A[1,])], 2))
+df <- data.frame(Auth1 = unlist(tmp[, 1]), Auth2 = unlist(tmp[, 2]), stringsAsFactors = FALSE)
+
+df$pat.id <- pat.nums[1]
+df$ref.types <- ref.types[1]
+df
+
+
+
+
+
+#class(N) #Make sure N is a dataframe or somthing that plays nicely.
+#dim(N)
+#colnames(N)
+#View(head(N))
+
+ref.years<- N$year
+ref.type<-N$type
+ref.years[1]
+ref.type[1]
+
+
+N<-N[,c(3:149)] #We want JUST the authors (and no "iz.na" check). awesome.
+
+tmpN <- t(combn(N[1,!is.na(N[1,])], 2))
+df.N <- data.frame(Auth1 = unlist(tmpN[, 1]), Auth2 = unlist(tmpN[, 2]), stringsAsFactors = FALSE)  #View(df.N) #yeahhh BEYBbeh!
+
+df.N #28 author pairs because the cmbn formula for 8 authors on a paper results in 28 combos of 2. See resource Khan academy: https://www.khanacademy.org/math/precalculus/prob-comb/combinations/v/combination-formula
+class(df.N)
+
+df.N$ref.years <- ref.years[1]
+df.N$ref.type <- ref.type[1]
+df.N
+
+
+for (my.row in 2:dim(N)[1]) {
+  # my.row <- 1 + my.row
+  print(my.row)
+  tmpN <- t(combn(N[my.row,!is.na(N[my.row,])], 2))
+  tmp.df <- data.frame(Auth1 = unlist(tmpN[, 1]), Auth2 = unlist(tmpN[, 2]), stringsAsFactors = FALSE)
+  
+  colnames(tmp.df) <- c("Auth1", "Auth2")
+  
+  tmp.df$ref.years<- ref.years[my.row]
+  tmp.df$ref.type <- ref.type[my.row]    
+  
+  df.N <- rbind(df.N, tmp.df)
+}
+# end
