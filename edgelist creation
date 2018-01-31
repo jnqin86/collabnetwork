@@ -1,0 +1,17 @@
+
+
+M <- read.csv(file = "c:/r/jeff.csv", header = T, stringsAsFactors = FALSE)
+dim(M)
+colnames(M)
+
+A <- M[1:1000,2:23]
+fix(A)
+
+df <- t(combn(A[1,!is.na(A[1,])], 2))
+
+for (my.row in 2:dim(A)[1]) {
+  # my.row <- 1 + my.row
+  print(my.row)
+  df <- rbind(df, t(combn(A[my.row,!is.na(A[my.row,])], 2)))
+}
+
