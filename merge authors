@@ -1,0 +1,31 @@
+#Take disambigated author list and the valdiated author list (from Match Dataverse Authors to Patent Reference Authors) and merge.
+#By: Shrutik
+
+# df1 is the authors from dataverse/GenBank (We have now established that both are the same).
+df1 = data.frame(patent_no = joined.dt1.dt.2$patent_no,Fname = joined.dt1.dt.2$Lname.y) # taking Lnames from dataverse
+df1 = na.omit(df1)
+df1_unique = df1[unique(df1$Fname),]
+# if not lowercase then convert to lowercase.
+
+df2 = cSplit(df2, "author_name", ",")
+df2 = data.frame(id = df2$id, Fname = df2$author_name_1)
+df2 <- mutate_each(df2, funs(tolower)) # Converting to lowercase for exact matches. df1 is all lowercase
+df2 = na.omit(df2)
+
+df2_unique = df2[unique(df2$Fname),]
+length(unique(df2$Fname))
+head(unique(df2$Fname),10)
+rm(df2_unique)
+# Full merge (Without Uniques)
+df1_df2 = merge(x = df1, y = df2, by = "Fname")
+
+length(unique(df1_df2$Fname)) #23k
+
+# Unique df1 to full df2 merge
+df1_unique_df2 = merge(x = df1_unique, y = df2, by = "Fname")
+
+length(unique(df1_unique_df2$Fname)) #8k
+
+# Unique df1 to unique df2 merge
+df1_unique_df2_unique = merge(x = df1_unique, y = df2_unique, by = "Fname")
+length(unique(df1_unique_df2_unique$Fname)) #

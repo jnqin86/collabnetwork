@@ -1,0 +1,87 @@
+#Cleaning Patent Description and Writing to DB
+patdesc<-read.csv("patdesc.csv")
+patDesc<-patdesc
+is.letter <- function(x) grepl("[[:alpha:]]", x) #a function that does a logical test for containing alphas (letters)
+patDesc$AlphaTest<-is.letter(patDesc$Patent) #create a column populated with results of is.letter test
+
+#Subset for patents from USPTO that contain only numeric patent ids
+patNUMERIC<-patDesc[which(patDesc$AlphaTest=='FALSE'),]
+
+#Subset for patents from USPTO that contain only alpha-containing patent ids
+patALPHA<-patDesc[which(patDesc$AlphaTest=='TRUE'),]
+
+nrow(patDesc)
+#2,399,248
+nrow(patNUMERIC)+nrow(patALPHA)
+#2,399,248    story checks out: We have matched for numeric and alpha containing in the USPTO patent description dataset. 
+
+#The patent dataverse "PatDescr" dataset has an 8-character long patent number.
+patNUMERIC$Patent<-as.character(patNUMERIC$Patent)
+max(nchar(patNUMERIC$Patent))
+#8
+min(nchar(patNUMERIC$Patent))
+#8 Good. We have consistent length.
+
+#However, the GenBank patent has 7 chars. And the Inventor all has a zero as a prefix. 
+#parse out first char of patent number:
+patNUMERIC$patentCHAR<-substr(patNUMERIC$Patent,1,1)
+#kk. 
+#table(invent2NUMERIC$patentCHAR1)
+#Good. We are good to go on taking off the first zero, as it consistently seems to be some kind of placeholder.
+#We can always add it back on if it DOES indicate some kind of identification number for the Inventor Patent id. 
+#Grab the 2-8th characters of the Patent field (without the zero, which is the first character). Put this in
+#a new column called Patent_number
+patNUMERIC$Patent_number<-substr(patNUMERIC$Patent,2,8)
+
+#check the nchar of results:
+max(nchar((patNUMERIC$Patent_number)))
+#7
+min(nchar(patNUMERIC$Patent_number))
+#7 We are good to GO. 
+#####################################  Clean a bit   #####################################################
+
+# select variables 2,3,5
+myvars <- c("Patent_number", "Abstract", "Title")
+pat_descr <- patNUMERIC[myvars]
+
+nrow(pat_descr)
+
+#2140600 unique patent numbers: (Checked Nov 29th, 2016, they are all unique)
+#The inventors (newInventor_1) that join on patents have 45,884 unique patent numbers. 
+#This is only 2% of the total numeric patent numbers. (50k/2 million) So it would be better computationally for our process of 
+#disambiguation and entity res to subset to just those that match our inventor patent numbers. 
+
+#Let's make an index of test.Inventor_1 unique (distinct) patentnumbers to match. 
+inventpatentNumbers<-dbGetQuery(con,"select DISTINCT(patentnumber) FROM test.Inventor_1;")
+inventorPat<-as.data.frame(inventpatentNumbers)
+colnames(inventorPat)[1]<-"patentnumber"
+inventorPat$patentnumber<-as.character(inventorPat$patentnumber)
+
+################################   Merge inventor index with pat description patent number #######################
+patDescr_redux<-merge(inventorPat, pat_descr, by = "patentnumber",all.x = TRUE)
+nrow(patDescr_redux)
+
+nrow(pat_descr)
+nrow(inventorPat)
+#upon doing a left inner join, some of the patents did not have a description (well, ok, did not have an ENTRY that matched
+#by patentnumber, as evidenced by the discrepency of about 4000 non matched patents. Hm!)
+
+#Which are these? 
+
+
+pat_descr$patentnumber<-as.character(pat_descr$patentnumber)
+sum(is.na(patDescr_redux$Title))
+View(pat_descr)
+##################################  Write le Patent Description Table #################################
+
+con<-dbConnect(MySQL(),user="GenBankUser", password="123GenBank456",host="metadatalab.syr.edu", dbname="test")
+#change to test db which we actually have write permissions for. 
+
+dbWriteTable(con, "Pat_Descr", patDescr_redux) #patent abstracts and titles
+#TRUE
+tryPatentDescription<-dbGetQuery(con,"select* FROM test.Pat_Descr LIMIT 0,10;")
+
+tryPatentDescription2<-dbGetQuery(con,"select* FROM test.Pat_Descr WHERE title not like 'NA' LIMIT 0,10;")
+patDescrRefTitles<-dbGetQuery(con,"select * FROM genbank.ReferencePatent as pr
+                              inner join test.Inventor_1 as i on pr.id=i.id inner join test.Pat_Descr as pd on
+                              pd.patentnumber=i.patentnumber LIMIT 0,20;")

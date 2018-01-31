@@ -1,0 +1,104 @@
+#Code to separate unique authors
+#By Shrutik (and Suchitra?)
+
+data = read.csv("US_unique.csv")
+
+View(data)
+temp = data
+
+#substituting " and" by ","
+temp_authors <- sub(" and",",",temp$authors)
+temp_authors <- sub(" and ",",",temp$authors)
+temp_authors <- sub("and ",",",temp$authors)
+
+temp <- data.frame(temp,temp_authors)
+temp = cSplit(temp, "temp_authors", ".,")
+
+US_unique_authors = temp
+
+US_unique_authors = subset(US_unique_authors
+  , select = c("patentNumber",
+  "temp_authors_01",
+  "temp_authors_02",
+  "temp_authors_03",
+  "temp_authors_04",
+  "temp_authors_05",
+  "temp_authors_06",
+  "temp_authors_07",
+  "temp_authors_08",
+  "temp_authors_09",
+  "temp_authors_10",
+  "temp_authors_11",
+  "temp_authors_12",
+  "temp_authors_13",
+  "temp_authors_14",
+  "temp_authors_15",
+  "temp_authors_16",
+  "temp_authors_17",
+  "temp_authors_18",
+  "temp_authors_19",
+  "temp_authors_20",
+  "temp_authors_21",
+  "temp_authors_22",
+  "temp_authors_23",
+  "temp_authors_24",
+  "temp_authors_25",
+  "temp_authors_26",
+  "temp_authors_27",
+  "temp_authors_28",
+  "temp_authors_29",
+  "temp_authors_30",
+  "temp_authors_31",
+  "temp_authors_32"))
+
+library(reshape2)
+US_unique_authors = melt(US_unique_authors, id.vars=c("patentNumber"))
+
+#Replacing temp_authors_01 with author 1 and so on...
+US_unique_authors$variable = gsub('temp_authors_01','1', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_02','2', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_03','3', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_04','4', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_05','5', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_06','6', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_07','7', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_08','8', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_09','9', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_10','10', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_11','11', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_12','12', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_13','13', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_14','14', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_15','15', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_16','16', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_17','17', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_18','18', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_19','19', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_20','20', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_21','21', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_22','22', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_23','23', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_24','24', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_25','25', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_26','26', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_27','27', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_28','28', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_29','29', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_30','30', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_31','31', US_unique_authors$variable)
+US_unique_authors$variable = gsub('temp_authors_32','32', US_unique_authors$variable)
+
+# Removing NAs
+
+backup = US_unique_authors
+US_unique_authors = na.omit(US_unique_authors)
+
+# Sorting according to Patent Number:
+US_unique_authors = US_unique_authors[order(US_unique_authors$patentNumber),]
+
+# Renaming Columns:
+colnames(US_unique_authors)[2] <- "author_sequence"
+colnames(US_unique_authors)[3] <- "author_name"
+
+# Saving CSV
+write.csv(US_unique_authors,"US_unique_authors.csv")
