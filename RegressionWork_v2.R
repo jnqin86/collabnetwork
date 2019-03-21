@@ -1,8 +1,9 @@
+# Author Credit: Dr. Jeff Hemsley, Syracuse University (2018).
 
 options(scipen = 999)
 # The second diameter is actually 'mean distance"
 
-dat.dir <- "C:/Users/Jeff Hemsley/Dropbox/_._Publications/Journal Papers/GenBank/data/"
+dat.dir <- "C:/Users/User/Dropbox/_._Publications/Journal Papers/GenBank/data/"
 
 fname.regression.vars <- "regressionVars_v2.csv"
 
