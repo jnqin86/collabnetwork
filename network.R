@@ -4,7 +4,7 @@ install.packages("plyr")
 library(plyr)
 #connect to mysql
 con<-dbConnect(MySQL(),
-               user="GenBankUser", password="123GenBank456",
+               user="GenBankUser", password="",
                host="metadatalab.syr.edu", dbname="genbank")
 
 #get data from mysql
