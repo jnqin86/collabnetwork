@@ -1,0 +1,179 @@
+---
+title: "Anti-community"
+author: "Sarah Bratt"
+date: "January 27, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Generate random graphs
+
+https://kateto.net/wp-content/uploads/2016/01/NetSciX_2016_Workshop.pdf
+Empty graph:
+```{r}
+eg <- make_empty_graph(40)
+plot(eg, vertex.size=10, vertex.label=NA)
+```
+Make tree
+```{r}
+tr <- make_tree(100, children = 3, mode = "undirected")
+plot(tr, vertex.size=7, vertex.color= 'green', vertex.label=NA)
+```
+
+## Community Detection
+There are two main ways to define communities: One way is using mathemtical network properties such asLink Density to define communities (whether they are called components, or modules, or clusters, or groups, or cliques, or teams, etc.). The other is based on the node and thus edge attributes. For example, a node could be a biologist who has an institution, an age, and so we can define the link as the relationship between people sharing an attribute, and group these together. For example, all authors who work on a paper that has the keyword "SARS" associated with it. 
+
+Our network is a scientific collaboraiton network. THerefore co-authorship is the relationship, an undirected, reciprocal relationship. We could include citation networks, which introduce direction to the graphs. But we will not do that for community detection in our collaboration networks now. 
+
+Let's see if we can "detect" communities in a pretty clearer bounded tree
+
+An example tree graph, with community detection using components 
+```{r}
+comp <-components(tr) #detect the maximally (weakly or strongly) connected components of a graph.
+comp <- components(tr, mode = c("weak", "strong"))
+comp$membership
+count_components(tr)
+
+```
+That didn't really work because there is just one component, in a graph that while fully connected has 3 children. 
+Let's try cluster edge betweennes to see if this more accurately clusters the connected graph.
+
+```{r}
+ceb <- cluster_edge_betweenness(tr)
+dendPlot(ceb, mode="hclust")
+
+```
+Let's check the network properties.
+```{r}
+plot(ceb, tr)
+```
+
+Looks as if there are 8 communities! What type of object is ceb? How many communities are there? How modular is the graph? 
+```{r}
+class(ceb)
+length(ceb)
+modularity(ceb)
+
+```
+Length tells us how many communities there are. We have 8 in the example tree (100 nodes, 3 children). Our modularity is high with 80216. High modularity for a partitioning reflects dense connections within communities and sparse
+connections across communities.
+
+What is the community membership for each node?
+```{r}
+membership(ceb)
+```
+Are there overlapping membership amng nodes and communties?
+```{r}
+crossing(ceb, tr)
+```
+Boolean vector: TRUE for edges across communities
+
+Community detection based on propogating labels:
+```{r}
+clp <- cluster_label_prop(tr)
+plot(clp, tr)
+
+```
+Greedy optimization of modularity:
+```{r}
+cfg <- cluster_fast_greedy(as.undirected(tr))
+plot(cfg, as.undirected(tr))
+```
+There is some overlap here. I wonder if we should take a sample of, say, an infectious disease community. They resemble smallworld graphs....
+
+We can build the networks without relying on the built in plot. For instance:
+```{r}
+V(tr)$community <- cfg$membership # the vertices of tr are given the node atribute "community". Each one is assigned a communty number. But how does it know to align the properly? Like how does it know which node should get which membership and how does it map it so well to the community attribute of each vertices? Because they ae numbered, that is, indexed?
+palette()
+colrs <- adjustcolor( c("gray50", "tomato", "gold", "yellowgreen", "cyan", "magenta"), alpha=.6)
+plot(tr, vertex.color=colrs[V(tr)$community])
+
+```
+
+# kcore 
+```{r}
+kc <- coreness(tr, mode="all")
+plot(tr, vertex.size=kc*6, vertex.label=kc, vertex.color=colrs[kc])
+
+```
+
+
+
+# Testing the significance of a community
+The following code snippet performs a Wilcoxon rank-sum test on the "internal" and "external" degrees of a community in order to quantify its significance. Let us call the edges within a community "internal" and the edges connecting the vertices of a community with the rest of the graph "external". The null hypothesis of the test is that there is no difference between the number of "internal" and "external" edges incident to a vertex of the community. More internal than external edges show that the community is significant; less internal than external edges show that the community is in fact an "anti-community". The p-value of the test performed by this function will be close to zero in both cases; the value of the test statistic tells us whether we have a community or an anti-community.
+http://igraph.wikidot.com/community-detection-in-r
+
+```{r}
+community.significance.test <- function(graph, vs, ...) {
+    if (is.directed(graph)) stop("This method requires an undirected graph")
+    subgraph <- induced.subgraph(graph, vs)
+    in.degrees <- degree(subgraph)
+    out.degrees <- degree(graph, vs) - in.degrees
+    wilcox.test(in.degrees, out.degrees, ...)
+}
+
+collaboration.capacity <- function(graph) {
+  
+}
+```
+But what is the "vs" input?
+The wilcox.test: This function can use large amounts of memory and stack (and even crash R if the stack limit is exceeded) if exact = TRUE and one sample is large (several thousands or more).
+
+in degrees and out-degrees of each community (so defined)
+
+```{r}
+community_1 = tr[V(tr)$community == '1']
+g2 <- graph_from_adjacency_matrix(community_1)
+degree(community_1)
+print(communities(tr))
+
+
+karate <- make_graph("Zachary")
+wc <- cluster_walktrap(karate)
+modularity(wc)
+membership(wc)
+plot(wc, karate)
+c <- cut_at(wc, steps=3)
+
+
+degree(c)
+?cut_at
+```
+```{r}
+g <- make_ring(10)
+
+g2 <- induced_subgraph(g, 1:9) #  calculates the induced subgraph of a set of vertices in a graph
+plot(g2)
+
+g3 <- subgraph.edges(g, 1:2, 1:5) # the vertices and edges to keep
+plot(g3)
+ecount(g3)
+vcount(g3)
+
+```
+
+Induced subgraph. We can specify which subgraph to take according to membership:
+```{r}
+library(igraph)
+
+
+# for clustering fast greedy
+collaboration.capacity.1 <- function(graph) {for (i in 1:max(cfg$membership))
+  cfg <- cluster_fast_greedy(as.undirected(graph))
+  plot(cfg, as.undirected(graph))
+  subg <- induced_subgraph(graph, which(cfg$membership == 1))
+  print(ecount(subg))
+  print(vcount(subg))
+  collab.cap <- ecount(graph)
+  print()
+}
+
+```
+
+
+
+
+
