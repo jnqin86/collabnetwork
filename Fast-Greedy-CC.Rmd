@@ -1,0 +1,148 @@
+---
+title: "Collab Capacity Wilcox Fast Greedy"
+author: "Sarah Bratt"
+date: "January 27, 2020"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(igraph)
+```
+
+
+## Community Detection
+There are two main ways to define communities: One way is using mathemtical network properties such asLink Density to define communities (whether they are called components, or modules, or clusters, or groups, or cliques, or teams, etc.). The other is based on the node and thus edge attributes. For example, a node could be a biologist who has an institution, an age, and so we can define the link as the relationship between people sharing an attribute, and group these together. For example, all authors who work on a paper that has the keyword "SARS" associated with it. Our network is a scientific collaboraiton network. THerefore co-authorship is the relationship, an undirected, reciprocal relationship. We could include citation networks, which introduce direction to the graphs. But we will not do that for community detection in our collaboration networks now. 
+
+## Generate random tree graph
+
+Make tree
+```{r}
+tr <- make_tree(100, children = 3, mode = "undirected")
+plot(tr, vertex.size=7, vertex.color= 'green', vertex.label=NA)
+```
+
+
+The graph is fully connected has 3 children. Let's try cluster edge betweennes to see if this more accurately clusters the connected graph.
+
+```{r}
+ceb <- cluster_edge_betweenness(tr)
+dendPlot(ceb, mode="hclust")
+
+```
+Let's check the network properties.
+```{r}
+plot(ceb, tr)
+```
+
+Looks as if there are 8 communities! What type of object is ceb? How many communities are there? How modular is the graph? 
+```{r}
+class(ceb)
+length(ceb)
+modularity(ceb)
+
+```
+Length tells us how many communities there are. We have 8 in the example tree (100 nodes, 3 children). Our modularity is high with 80216. High modularity for a partitioning reflects dense connections within communities and sparse
+connections across communities.
+
+What is the community membership for each node?
+```{r}
+membership(ceb)
+```
+Are there overlapping membership amng nodes and communties?
+```{r}
+crossing(ceb, tr)
+```
+Boolean vector: TRUE for edges across communities
+
+Community detection based on propogating labels:
+```{r}
+clp <- cluster_label_prop(tr)
+plot(clp, tr)
+
+```
+Greedy optimization of modularity:
+```{r}
+cfg <- cluster_fast_greedy(as.undirected(tr))
+plot(cfg, as.undirected(tr))
+```
+There is some overlap here. I wonder if we should take a sample of, say, an infectious disease community. They resemble smallworld graphs....
+
+We can build the networks without relying on the built in plot. For instance:
+```{r}
+V(tr)$community <- cfg$membership == 1# the vertices of tr are given the node atribute "community". Each one is assigned a communty number. But how does it know to align the properly? Like how does it know which node should get which membership and how does it map it so well to the community attribute of each vertices? Because they ae numbered, that is, indexed?
+palette()
+colrs <- adjustcolor( c("gray50", "tomato", "gold", "yellowgreen", "cyan", "magenta"), alpha=.6)
+plot(tr, vertex.color=colrs[V(tr)$community])
+
+```
+
+
+# Testing the significance of a community
+The following code snippet performs a Wilcoxon rank-sum test on the "internal" and "external" degrees of a community in order to quantify its significance. Let us call the edges within a community "internal" and the edges connecting the vertices of a community with the rest of the graph "external". The null hypothesis of the test is that there is no difference between the number of "internal" and "external" edges incident to a vertex of the community. More internal than external edges show that the community is significant; less internal than external edges show that the community is in fact an "anti-community". The p-value of the test performed by this function will be close to zero in both cases; the value of the test statistic tells us whether we have a community or an anti-community.
+http://igraph.wikidot.com/community-detection-in-r
+
+```{r}
+community.significance.test <- function(graph, vs, ...) {
+    if (is.directed(graph)) stop("This method requires an undirected graph")
+    subgraph <- induced.subgraph(graph, vs)
+    in.degrees <- degree(subgraph)
+    out.degrees <- degree(graph, vs) - in.degrees
+    wilcox.test(in.degrees, out.degrees, ...)
+}
+
+collaboration.capacity <- function(graph) {
+  
+}
+```
+But what is the "vs" input? How do we isolate the in-degree and out-degree? 
+BTW, The wilcox.test: This function can use large amounts of memory and stack (and even crash R if the stack limit is exceeded) if exact = TRUE and one sample is large (several thousands or more).
+
+
+# Isolating parts of graph
+```{r}
+
+g <- make_ring(10)
+plot(g)
+g2 <- induced_subgraph(g, 1:9) #  calculates the induced subgraph of a set of vertices in a graph
+plot(g2)
+g3 <- subgraph.edges(g, 1:2, 1:5) # the vertices and edges to keep
+plot(g3)
+ecount(g3)
+vcount(g3)
+```
+
+
+Induced subgraph works, but can we can specify which subgraph to take according to membership? 
+
+# Collaboration capacity: Let's write a function that takes a graph object and calculates the wilcox test for significance of in-degree accoridng to the fast-greedy algorithm, and plots the modules too.
+
+```{r}
+collaboration.capacity.1 <- function(graph) {for (i in 1:max(cfg$membership))
+  # i = 1
+  # graph = tr
+  cfg <- cluster_fast_greedy(as.undirected(graph))
+  plot(cfg, as.undirected(graph))
+  subg <- induced_subgraph(graph, which(cfg$membership == i))
+  # vs <- V(subg)
+  in.degrees <- degree(subg)
+  out.degrees <- degree(graph) - in.degrees
+  total.degrees <- degree(graph) 
+  collab.cap <- (in.degrees - out.degrees)/total.degrees
+  ecountSUB <- ecount(subg)
+  vcountSUB <- vcount(subg)
+  wilcox_test <- wilcox.test(in.degrees, total.degrees)
+  print("Wilcox significance test for a fast greedy network community detection method")
+  print(wilcox_test)
+  print("collaboration capacity accoridng to SCISIPBIO framework")
+  print(collab.cap)
+  # df <- as.data.frame(collab.cap, i)
+  
+  # module_capacity <- paste("module-capacity-", i, ".csv", sep = "")
+  # write.csv(collab.cap, module_capacity)
+
+}
+
+collaboration.capacity.1(tr)
+```
