@@ -1,0 +1,75 @@
+---
+title: "CC_OutEdges"
+author: "Sarah Bratt"
+date: "January 30, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Node-level Collaboration Capacity 
+This code aims to develop the function for CC at node-level. It is starting with random graphs in undirected networks with non-overlapping community detection algorithms. 
+
+```{r}
+# Generate a theoretical tree graph use Fast greedy alg to do community detection. 
+library(igraph)
+tr <- make_tree(10, children = 2, mode = "undirected")
+cfg <- cluster_fast_greedy(as.undirected(tr))
+plot(cfg, as.undirected(tr))
+```
+Looks good. What are the community properties? 
+```{r}
+class(cfg)
+length(cfg)
+modularity(cfg)
+membership(cfg)
+crossing(cfg, tr) # nodes that connects two or more communities. Bridge nodes, sort of. 
+
+```
+Notice that "crossing"" returns "a logical vector, with one value for each edge, ordered according to the edge ids. The value is TRUE iff the edge connects #two different communities, according to the (best) membership vector, as returned by membership()."
+
+```{r}
+V(tr)$community <- cfg$membership # give the vertices attributes of community 
+```
+```{r}
+V(tr)$degree <- degree(tr) # give the vertices attributes of degree (count)
+V(tr)$id <-V(tr) # give the vertices attributes of ID
+```
+```{r}
+# NOT RUN
+subg <- induced_subgraph(tr, which(V(tr)$community == 1)) # just trying and playing
+V(subg)$degree <- degree(subg)
+vertex.attributes(subg)
+# END NOT RUN 
+```
+Loop to compute the degree of each community's subgraph (eW)
+```{r}
+community_no <- length(unique(V(tr)$community)) # Number of steps to take in loop is the number of communities.
+  
+for (i in 1:community_no){
+  # i = 1
+  subg <- induced_subgraph(tr, which(V(tr)$community == i))
+  V(subg)$degree_within <- degree(subg)
+  total_degree <- V(subg)$degree
+  within <- V(subg)$degree_within
+  V(subg)$degree_outside <- total_degree - within
+ 
+  V(subg)$collab_capacity <- round((V(subg)$degree_outside - V(subg)$degree_within)/total_degree, 2) 
+  nam <- paste("subg", i, sep = "")
+  assign(nam, subg)
+}
+
+vertex.attributes(subg1)
+plot(V(subg1)$collab_capacity)
+
+
+  
+```
+Time to compute edges outside. This is total degrees minus in degrees for each node in each community.
+```{r}
+V(tr)$degree
+
+```
+
