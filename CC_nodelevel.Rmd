@@ -65,11 +65,4 @@ vertex.attributes(subg1)
 plot(V(subg1)$collab_capacity)
 
 
-  
-```
-Time to compute edges outside. This is total degrees minus in degrees for each node in each community.
-```{r}
-V(tr)$degree
-
-```
 
