@@ -15,7 +15,7 @@ This code aims to develop the function for CC at node-level. It is starting with
 ```{r}
 # Generate a theoretical tree graph use Fast greedy alg to do community detection. 
 library(igraph)
-tr <- make_tree(10, children = 2, mode = "undirected")
+tr <- make_tree(20, children = 2, mode = "undirected")
 cfg <- cluster_fast_greedy(as.undirected(tr))
 plot(cfg, as.undirected(tr))
 ```
@@ -26,14 +26,13 @@ length(cfg)
 modularity(cfg)
 membership(cfg)
 crossing(cfg, tr) # nodes that connects two or more communities. Bridge nodes, sort of. 
-
+V(tr)$bridge_node <- crossing(cfg, tr) # HELP
+vertex.attributes(tr)
 ```
 Notice that "crossing"" returns "a logical vector, with one value for each edge, ordered according to the edge ids. The value is TRUE iff the edge connects #two different communities, according to the (best) membership vector, as returned by membership()."
 
 ```{r}
 V(tr)$community <- cfg$membership # give the vertices attributes of community 
-```
-```{r}
 V(tr)$degree <- degree(tr) # give the vertices attributes of degree (count)
 V(tr)$id <-V(tr) # give the vertices attributes of ID
 ```
@@ -46,23 +45,143 @@ vertex.attributes(subg)
 ```
 Loop to compute the degree of each community's subgraph (eW)
 ```{r}
+V(tr)$collabcapacity <- 0   
 community_no <- length(unique(V(tr)$community)) # Number of steps to take in loop is the number of communities.
+#collaboration capacity add to vertices in whole graph
   
-for (i in 1:community_no){
+  for (i in 1:community_no){
   # i = 1
   subg <- induced_subgraph(tr, which(V(tr)$community == i))
-  V(subg)$degree_within <- degree(subg)
+  V(subg)$degree_within <- degree(subg) # degree inside fnction.
   total_degree <- V(subg)$degree
   within <- V(subg)$degree_within
   V(subg)$degree_outside <- total_degree - within
- 
-  V(subg)$collab_capacity <- round((V(subg)$degree_outside - V(subg)$degree_within)/total_degree, 2) 
-  nam <- paste("subg", i, sep = "")
-  assign(nam, subg)
+   
+  # V(subg)$collab_capacity<- round((V(subg)$degree_outside - V(subg)$degree_within)/total_degree, 2) 
+  
+  V(tr)$collabcapacity[which(V(tr)$community == i)] <- round((V(subg)$degree_outside - V(subg)$degree_within)/total_degree, 2) 
+  
+  
+  # nam <- paste("subg", i, sep = "")
+  # assign(nam, subg)
 }
 
-vertex.attributes(subg1)
-plot(V(subg1)$collab_capacity)
+vertex.attributes(tr)
+boxplot(V(tr)$collabcapacity ~ V(tr)$community, main = "Distribution of node-level CC By Community", ylab = "CC (-1 to 1)", xlab = "Community Membership (#)")
+
+  
+```
+Bow and whisker plot.
+```{r}
+library(lattice)
+bwplot(V(tr)$community ~V(tr)$collabcapacity, main = "Distribution of node-level CC By Community", xlab = "CC (-1 to 1)", ylab = "Community Membership (#)")
+```
+Try ggplot2
+```{r}
+install.packages("ggnetwork")
+# devtools::install_github("briatte/ggnetwork")
+install.packages("intergraph")
+
+library(intergraph)
+library(ggnetwork)
+library(ggplot2)
+```
+```{r}
+n = tr
+
+ggnetwork(n, layout = "fruchtermanreingold", cell.jitter = 0.75)
+ggnetwork(n, layout = "target", niter = 100)
+head(ggnetwork(n))
+tail(ggnetwork(n))
+
+```
+```{r}
+
+ggplot(n, aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_edges(aes(linetype = factor(community)), color = "grey75") +
+  geom_nodes(color = "gold", size = 8) +
+  geom_nodetext(aes(label = vertex.names)) +
+  geom_edgetext(aes(label = collabcapacity), color = "white", fill = "grey25") +
+  theme_minimal() +
+  theme(axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.background = element_rect(fill = "grey25"),
+        panel.grid = element_blank())
+```
+
+```{r}
+V(n)$collabcapacity <- V(tr)$collabcapacity
+ggplot(n, aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_edges(aes(linetype = factor(community)), color = "grey50") +
+  geom_nodes(aes(x, y, color = factor(community), size = 1.5 * collabcapacity)) +
+  geom_nodetext(aes(label = vertex.names, size = 0.5 * collabcapacity)) +
+  geom_edgetext(aes(label = collabcapacity), color = "grey25") +
+  scale_color_brewer(palette = "Set2") +
+  scale_size_area("collaboration capacity", breaks = 1:3, max_size = 5) +
+  theme_blank()
+```
+
+```{r}
+
+p10 <- ggplot(n, aes(x = factor(community), y = collabcapacity)) +
+        geom_boxplot()
+p10
+```
+
+```{r}
+p10 <- p10 + scale_x_discrete(name = "Community (#)") +
+        scale_y_continuous(name = "Collaboration capacity")
+          breaks = seq(-1,1,0.25)
+          limits = c(-1, 1.5)
+        
+p10
+```
+```{r}
+install.packages('extrafont')
+library(extrafont)
+# font_import()
+loadfonts(device = "win")
 
 
+download.file("http://simonsoftware.se/other/xkcd.ttf",
+              dest="xkcd.ttf", mode="wb")
+system("mkdir ~/.fonts")
+system("cp xkcd.ttf  ~/.fonts")
+font_import(paths = getwd(), pattern = "[X/x]kcd", prompt=FALSE)
+# font_import(paths = "~/.fonts", pattern="[X/x]kcd")
+fonts()
+#windowsFonts()
+
+p10 <- ggplot(n, aes(x = factor(community), y = collabcapacity)) +
+        geom_boxplot(colour = "black", fill = "#56B4E9") +
+        scale_y_continuous(name = "collaboration capacity",
+                           breaks = seq(-1, 1, 0.25),
+                           limits=c(-1, 1)) +
+        scale_x_discrete(name = "Community #") +
+        ggtitle("Boxplot of Node-level CC by Community") +
+        theme(axis.line.x = element_line(size = 0.5, colour = "black"),
+              axis.line.y = element_line(size = 0.5, colour = "black"),
+              axis.line = element_line(size=1, colour = "black"),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.border = element_blank(),
+              panel.background = element_blank(),
+              plot.title=element_text(size = 20, family="Comic Sans MS"),
+              text=element_text(size = 10, family="Comic Sans MS"),
+              axis.text.x=element_text(colour="black", size = 12),
+              axis.text.y=element_text(colour="black", size = 12))
+p10
+# NOT RUN
+windowsFonts()
+library(ggplot2)
+library(extrafont)
+loadfonts(device = "win")
+
+a <- ggplot(mtcars, aes(x=wt, y=mpg)) + geom_point() +
+  ggtitle("Fuel Efficiency of 32 Cars") +
+  xlab("Weight (x1000 lb)") + ylab("Miles per Gallon") +
+  theme(text=element_text(size=16,  family="Comic Sans MS"))
+print(a)
+# END NOT RUN
+```
 
