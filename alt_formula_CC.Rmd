@@ -1,0 +1,44 @@
+---
+title: "alt_formula_forCC"
+author: "Sarah Bratt"
+date: "February 5, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Maybe here are many diff types of collab. capacity. Come up with couple different formulas, and plots. Also, try normalizing for seniority (?), tenure of time doing research (more likely to have connections outside).
+
+```{r}
+n <- 30
+eo <- runif(n = n, min = 1, max = 20)
+ew <- runif(n = n, min = 1, max = 20)
+cc <- (eo - ew)/(eo+ew)
+size <- 1 + 2 * abs(cc)
+col <- rep("red", n)
+col[cc > 0] <- "blue"
+plot(eo,ew, col = col, cex = size, pch = 16)
+```
+
+what if we give weight to people with more links, larger groups, that is, in general?
+
+
+```{r}
+n <- 30
+eo <- runif(n = n, min = 1, max = 20)
+ew <- runif(n = n, min = 1, max = 20)
+cc <- (eo - ew)/(eo+ew)
+size <- 1 + 2 * abs(cc)
+col <- rep("red", n)
+col[cc > 0] <- "blue"
+plot(eo,ew, col = col, cex = size, pch = 16)
+```
+
+weight eo and ew * mean(teamsize)
+
+
+Outputs of amit's data: freq distribution, then add attributes to the nodes.See if patents, data sub, and pubs, corelate with colab capcity. 
+
+
+
