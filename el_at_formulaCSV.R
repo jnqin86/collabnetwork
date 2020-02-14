@@ -1,3 +1,5 @@
+
+
 V(sw)$collabcapacity <- 0   
 V(sw)$degree_outside <- 0
 V(sw)$degree_within <- 0
