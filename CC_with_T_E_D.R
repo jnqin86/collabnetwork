@@ -11,14 +11,21 @@ library(igraph)
 #it will be rewired to the graph as a random edge.
 
 library(igraph)
-sw <- watts.strogatz.game(1, 100, 1, 0.35, loops = FALSE, multiple = FALSE) # 100 nodes, with n = probability of linking, no loops.
+sw <- watts.strogatz.game(3, 3, 1, .2, loops = FALSE, multiple = FALSE) # 100 nodes, with n = probability of linking, no loops.
 plot(sw, vertex.label= NA, edge.arrow.size=0.02,vertex.size = 0.5, xlab = "Small world model") 
-
+sw
+hist(degree(sw))
+?watts.strogatz.game
 #install.packages("linkcomm")
 library(linkcomm)
-#demo(topic = "linkcomm", package = "linkcomm")
+demo(topic = "linkcomm", package = "linkcomm")
+
+#g <- sample_pa(200)
+#g <- as_edgelist(g, names = TRUE)
 g <- as_edgelist(sw, names = TRUE)
+?igraph
 lc <- getLinkCommunities(g)
+?getLinkCommunities()
 head(g)
 
 # We can defined the communities through the cutat point.  
@@ -32,6 +39,7 @@ plot(lc2, type = "members")
 #lc2$nodeclusters
 
 plot(lc2, type = "members")
+par(mar = c(0,0,0,0))
 plot(lc2, type = "graph")
 getNestedHierarchies(lc, clusid = 1, plot = TRUE)
 plot(lc2, type = "graph", layout="spencer.circle")
@@ -49,7 +57,7 @@ V(sw)$community <- cfg$membership
 V(sw)$clusters <- lc2$nodeclusters # give the vertices attributes of community 
 V(sw)$degree <- degree(sw) # give the vertices attributes of degree (count)
 V(sw)$egv_cent <- round(as.numeric(unlist(eigen_centrality(sw)$vector)),2) # centrality scores
-
+?eigen_centrality
 plot(unlist(V(sw)$egv_cent) ~ V(sw)$degree, type = "n") # HELPP MEEEE!
 text(jitter(as.numeric((sw)$egv_cent)), jitter(V(sw)$degree), labels = V(sw)$egv_cent)
 vertex_attr_names(sw)
