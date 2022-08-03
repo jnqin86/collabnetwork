@@ -7,7 +7,7 @@
 # links. We analyze the submissions with most citations and examine features of the submission that are related with differences in 
 # citations. This work therefore assigns credit to submissions, which is something that is not available now.
 # PAPER: https://arxiv.org/abs/2001.05917
-
+#updated 8-3-2022 to connect datasets to publications 
 
 install.packages("dbConnect")
 library(dbConnect)
